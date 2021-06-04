@@ -1,12 +1,12 @@
-import os
-import time
-
-import requests
-import telegram
 from dotenv import load_dotenv
+import logging
+import os
+import requests
+import time
+from telegram import Bot
+
 
 load_dotenv()
-
 
 PRAKTIKUM_TOKEN = os.getenv("PRAKTIKUM_TOKEN")
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -65,12 +65,20 @@ def get_homework_statuses(current_timestamp):
 
 
 def send_message(message, bot_client):
-    ...
-    return bot_client.send_message(...)
+    return bot_client.send_message(CHAT_ID, message)
 
 
 def main():
-    # проинициализировать бота здесь
+    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        format=(
+            '%(asctime)s, %(levelname)s, %(name)s, %(filename)s, '
+            '%(funcName)s, %(lineno)s, %(message)s'
+        )
+    )
+    logging.basicConfig(filename='main.log', filemode='w')
+
+    t_bot = Bot(token=TELEGRAM_TOKEN)
     # current_timestamp = int(time.time())  # начальное значение timestamp
     # current_timestamp = (int(time.time()) - (5 * 60))
     current_timestamp = 0
@@ -80,9 +88,10 @@ def main():
             new_homework = get_homework_statuses(current_timestamp)
             homeworks = new_homework.get('homeworks')
             if homeworks:
-                send_message(parse_homework_status(homeworks[0]))
-            current_timestamp = new_homework.get('current_date', current_timestamp)  # обновить timestamp
-            time.sleep(300)  # опрашивать раз в пять минут
+                send_message(parse_homework_status(homeworks[0]), t_bot)
+            current_timestamp = new_homework.get('current_date',
+                                                 current_timestamp)
+            time.sleep(300)
 
         except Exception as e:
             print(f'Бот столкнулся с ошибкой: {e}')
