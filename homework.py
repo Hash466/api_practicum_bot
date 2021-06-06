@@ -120,15 +120,15 @@ def send_message(message, bot_client):
 
 def main():
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     file_handler = RotatingFileHandler(
         LOG_PATH_NAME, maxBytes=50000000, backupCount=3
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.ERROR)
+    console_handler.setLevel(logging.DEBUG)
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
