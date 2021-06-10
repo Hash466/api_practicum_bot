@@ -1,9 +1,11 @@
 import logging
 import os
+import sys
 import time
+from json import JSONDecodeError
+from logging.handlers import RotatingFileHandler
 
 import requests
-from json import JSONDecodeError
 from dotenv import load_dotenv
 from telegram import Bot
 
@@ -12,8 +14,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH_NAME = os.path.join(BASE_DIR, LOG_FILENAME)
 logging.basicConfig(
     level=logging.INFO,
-    filename=LOG_PATH_NAME,
-    filemode='w',
+    # filename=LOG_PATH_NAME,
+    handlers=[
+        RotatingFileHandler(
+            LOG_PATH_NAME, maxBytes=50000000, backupCount=3
+        )
+    ],
+    # filemode='w',
     format=(
         '%(asctime)s, %(levelname)s, %(name)s, %(filename)s, '
         '%(funcName)s, %(lineno)s, %(message)s'
@@ -30,9 +37,9 @@ ERROR_DESCRIPTION = {
     'ConnectionError': 'Ошибка соединения!\n{err}',
     'TimeoutError': 'Время ожидание ответа истекло!\n{err}',
     'JSONDecodeError': 'Ошибка разбора json ответа сервера!\n{err}',
-    'ResponseExcept': 'Ответ API содержит ошибку!\n{code}\n{message}',
+    'ResponseExcept': 'Ответ API содержит ошибку "{code}" {message}',
     'evn_error': 'Ошибка загрузки данных из ".env": {err}',
-    'status_error': 'Недокументированный статус работы "{homework_name}"!',
+    'status_error': 'Недокументированный статус работы: "{homework_name}"!',
     'name_error': 'Отсутствует имя домашки!',
     'other_errors': 'При попытке подключения к API произошла ошибка:\n{err}'
 }
@@ -45,7 +52,8 @@ VERDICTS = {
                  'уроку.'),
     'reviewing': ('Ваша работа "{homework_name}" в данный момент проходит '
                   'ревью.\nМолитесь всем Богам, или предложите ревьюверу '
-                  'бутылочку нормального пойла, дабы задобрить уважаемого!'),
+                  'бутылочку нормального пойла, дабы задобрить уважаемого!'
+                  '\nЕсли, конечно, ревьювер не трезвенник!!!'),
 }
 
 load_dotenv()
@@ -56,6 +64,7 @@ try:
     CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 except KeyError as err:
     logging.exception(LOG_MESSAGES['env_error'].format(err=err))
+    sys.exit(1)
 
 HEADERS = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
 API_URL = 'https://praktikum.yandex.ru/api/user_api/homework_statuses/'
@@ -71,12 +80,12 @@ def parse_homework_status(homework):
     Returns:
         (str): сообщение с текущим статусом домашки
     """
-    homework_name = homework.get('homework_name', 'no name')
-    if homework_name == 'no name':
+    homework_name = homework.get('homework_name')
+    if not homework_name:
         raise ValueError(ERROR_DESCRIPTION['name_error'])
 
-    status = homework.get('status', 'status_error')
-    if (status == 'status_error') or (status not in VERDICTS):
+    status = homework.get('status')
+    if status and (status not in VERDICTS):
         raise ValueError(
             ERROR_DESCRIPTION['status_error'].format(
                 homework_name=homework_name
@@ -97,7 +106,6 @@ def get_homework_statuses(current_timestamp):
             {'homeworks': [], 'current_date': 1622751338};
             {'homeworks': [{...},], 'current_date': 1622752114}
     """
-    headers = HEADERS
     params = {
         'from_date': current_timestamp
     }
@@ -105,7 +113,7 @@ def get_homework_statuses(current_timestamp):
     try:
         homework_statuses = requests.get(
             API_URL,
-            headers=headers,
+            headers=HEADERS,
             params=params
         )
     except ConnectionError as err:
@@ -145,7 +153,7 @@ def send_message(message, bot_client):
 
 def main():
     t_bot = Bot(token=TELEGRAM_TOKEN)
-    logging.info(LOG_MESSAGES['bot_start'])
+    logging.debug(LOG_MESSAGES['bot_start'])
 
     current_timestamp = int(time.time())
 
@@ -169,7 +177,7 @@ def main():
             err_msg = LOG_MESSAGES['bot_error'].format(err=err)
             logging.error(err_msg)
             send_message(err_msg, t_bot)
-            time.sleep(5)
+            time.sleep(60)
 
 
 if __name__ == '__main__':
