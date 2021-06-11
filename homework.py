@@ -14,13 +14,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH_NAME = os.path.join(BASE_DIR, LOG_FILENAME)
 logging.basicConfig(
     level=logging.INFO,
-    # filename=LOG_PATH_NAME,
     handlers=[
         RotatingFileHandler(
             LOG_PATH_NAME, maxBytes=50000000, backupCount=3
         )
     ],
-    # filemode='w',
     format=(
         '%(asctime)s, %(levelname)s, %(name)s, %(filename)s, '
         '%(funcName)s, %(lineno)s, %(message)s'
@@ -52,8 +50,7 @@ VERDICTS = {
                  'уроку.'),
     'reviewing': ('Ваша работа "{homework_name}" в данный момент проходит '
                   'ревью.\nМолитесь всем Богам, или предложите ревьюверу '
-                  'бутылочку нормального пойла, дабы задобрить уважаемого!'
-                  '\nЕсли, конечно, ревьювер не трезвенник!!!'),
+                  'чашечку кофе, дабы задобрить уважаемого!'),
 }
 
 load_dotenv()
@@ -81,11 +78,11 @@ def parse_homework_status(homework):
         (str): сообщение с текущим статусом домашки
     """
     homework_name = homework.get('homework_name')
-    if not homework_name:
+    if homework_name is None:
         raise ValueError(ERROR_DESCRIPTION['name_error'])
 
     status = homework.get('status')
-    if status and (status not in VERDICTS):
+    if status not in VERDICTS:
         raise ValueError(
             ERROR_DESCRIPTION['status_error'].format(
                 homework_name=homework_name
